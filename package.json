@@ -1,0 +1,16 @@
+{
+  "name": "02-onlineresumes",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node ./bin/www"
+  },
+  "dependencies": {
+    "cookie-parser": "~1.4.4",
+    "debug": "~2.6.9",
+    "express": "^4.22.3",
+    "mongodb": "^7.8.0",
+    "morgan": "^1.12.1",
+    "mysql": "^2.18.1"
+  }
+}
