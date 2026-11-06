@@ -1,0 +1,116 @@
+*{
+    margin:0;
+    padding:0;
+    box-sizing:border-box;
+    font-family:"Microsoft Yahei",sans-serif;
+}
+body{
+    background-color:#f0f4ff;
+    padding:20px 16px;
+    line-height:1.6;
+}
+.container{
+    max-width:700px;
+    margin:0 auto;
+    background:#fff;
+    padding:36px;
+    border-radius:20px;
+    box-shadow:0 6px 24px rgba(0,0,0,0.1);
+}
+h1,h2{
+    text-align:center;
+    color:#224499;
+    margin-bottom:24px;
+    font-weight:600;
+}
+.btn-link{
+    display:inline-block;
+    margin-bottom:24px;
+    color:#2563eb;
+    text-decoration:none;
+    font-weight:bold;
+    transition:color 0.2s;
+}
+.btn-link:hover{
+    color:#1d4ed8;
+    text-decoration:underline;
+}
+.form-box label{
+    display:block;
+    margin:16px 0 8px;
+    font-weight:500;
+    color:#334155;
+}
+select,textarea{
+    width:100%;
+    padding:12px 14px;
+    border:1px solid #d1d5db;
+    border-radius:10px;
+    font-size:15px;
+    transition:all 0.2s;
+    outline:none;
+}
+select:focus,textarea:focus{
+    border-color:#2563eb;
+    box-shadow:0 0 0 3px rgba(37,99,235,0.15);
+}
+button{
+    margin-top:20px;
+    padding:11px 26px;
+    border:none;
+    background:#2563eb;
+    color:white;
+    border-radius:10px;
+    font-size:16px;
+    cursor:pointer;
+    transition:all 0.2s;
+}
+button:hover{
+    background:#1d4ed8;
+    transform:translateY(-2px);
+    box-shadow:0 4px 12px rgba(37,99,235,0.3);
+}
+button:active{
+    transform:translateY(0);
+}
+.result-card{
+    margin-top:28px;
+    padding:24px;
+    background:#eef4ff;
+    border-radius:12px;
+    border-left:4px solid #2563eb;
+}
+.game-box{
+    width:420px;
+    height:420px;
+    border:2px solid #cbd5e1;
+    position:relative;
+    margin:24px auto;
+    background:#f8fafc;
+    overflow:hidden;
+    border-radius:12px;
+    box-shadow:inset 0 2px 8px rgba(0,0,0,0.05);
+}
+#player{
+    width:32px;
+    height:32px;
+    background:#2563eb;
+    position:absolute;
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%);
+    border-radius:6px;
+}
+.control-group{
+    text-align:center;
+}
+@media(max-width:500px){
+    .container{
+        padding:24px;
+    }
+    .game-box{
+        width:320px;
+        height:320px;
+    }
+}
+

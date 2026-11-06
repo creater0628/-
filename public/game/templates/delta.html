@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>三角洲行动 · 武器数据库</title>
+    <link rel="stylesheet" href="../static/css/style.css">
+    <link rel="stylesheet" href="../static/css/delta.css">
+</head>
+<body>
+    <div class="container wide-container">
+        <h1>三角洲行动 · 武器数据库</h1>
+        <div class="nav-links">
+            <a href="index.html" class="btn-link">&lt;- 返回 AI 资源生成器</a>
+            <a href="ai.html" class="btn-link">AI 指挥官助手 -&gt;</a>
+            <a href="play.html" class="btn-link">游戏试玩 -&gt;</a>
+        </div>
+
+        <!-- 概览统计 -->
+        <div class="stats-row" id="statsRow">
+            <div class="stat-card"><span class="stat-num" id="statTotal">—</span><span class="stat-label">武器总数</span></div>
+            <div class="stat-card"><span class="stat-num" id="statCats">—</span><span class="stat-label">武器分类</span></div>
+            <div class="stat-card"><span class="stat-num" id="statShown">—</span><span class="stat-label">当前显示</span></div>
+        </div>
+
+        <!-- 工具栏：搜索 + 排序 -->
+        <div class="toolbar">
+            <input type="search" id="searchBox" class="search-input" placeholder="搜索武器名称，如 M4A1 / AWM…">
+            <select id="sortSelect" class="sort-select">
+                <option value="weapon_id">默认排序</option>
+                <option value="base_damage">按伤害 ↓</option>
+                <option value="fire_rate">按射速 ↓</option>
+                <option value="optimal_range">按射程 ↓</option>
+                <option value="handling">按操控性 ↓</option>
+                <option value="stability">按稳定性 ↓</option>
+                <option value="recoil_control">按后坐力控制 ↓</option>
+                <option value="hip_fire_accuracy">按腰射精度 ↓</option>
+                <option value="magazine_capacity">按弹匣容量 ↓</option>
+                <option value="price">按价格 ↓</option>
+            </select>
+        </div>
+
+        <!-- 分类筛选按钮 -->
+        <div class="filter-row" id="filterRow"></div>
+
+        <!-- 武器卡片网格 -->
+        <div class="weapon-grid" id="weaponGrid">
+            <p class="loading">数据加载中…</p>
+        </div>
+
+        <!-- 详情弹窗 -->
+        <div class="modal-mask" id="modalMask">
+            <div class="modal-box" id="modalBox"></div>
+        </div>
+    </div>
+
+    <script>
+        const API = '/api/delta';
+        let allWeapons = [];        // 全量数据，前端本地筛选，避免每次点击都请求
+        let activeCategory = null;
+        let activeKeyword = '';
+        let activeSort = 'weapon_id';
+
+        // null / undefined 统一显示为破折号，避免页面出现空白格
+        const dash = v => (v === null || v === undefined || v === '' ? '—' : v);
+        const money = v => (v === null || v === undefined ? '—' : Number(v).toLocaleString('zh-CN'));
+
+        // 数值条：把 0-100 的属性画成进度条，直观对比武器强弱
+        function bar(value) {
+            if (value === null || value === undefined) return '<span class="bar-empty">数据缺失</span>';
+            const n = Math.max(0, Math.min(100, Number(value)));
+            return '<div class="bar"><div class="bar-fill" style="width:' + n + '%"></div></div>';
+        }
+
+        async function loadCategories() {
+            const res = await fetch(API + '/categories');
+            const cats = await res.json();
+            const row = document.getElementById('filterRow');
+            let html = '<button class="chip chip-active" data-cat="">全部</button>';
+            cats.forEach(c => {
+                html += '<button class="chip" data-cat="' + c.category + '">' + c.category + ' <span class="chip-count">' + c.count + '</span></button>';
+            });
+            row.innerHTML = html;
+            row.querySelectorAll('.chip').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    activeCategory = btn.dataset.cat || null;
+                    row.querySelectorAll('.chip').forEach(b => b.classList.remove('chip-active'));
+                    btn.classList.add('chip-active');
+                    render();
+                });
+            });
+        }
+
+        async function loadStats() {
+            const res = await fetch(API + '/stats');
+            const s = await res.json();
+            document.getElementById('statTotal').textContent = s.total_weapons;
+            document.getElementById('statCats').textContent = s.categories;
+        }
+
+        async function loadWeapons() {
+            const res = await fetch(API + '/weapons');
+            if (!res.ok) throw new Error('接口返回 ' + res.status);
+            allWeapons = await res.json();
+        }
+
+        function render() {
+            const grid = document.getElementById('weaponGrid');
+            // 本地筛选：分类 + 关键词
+            let list = allWeapons.filter(w => {
+                if (activeCategory && w.category !== activeCategory) return false;
+                if (activeKeyword && !(w.name || '').toLowerCase().includes(activeKeyword)) return false;
+                return true;
+            });
+
+            // 排序：字符串型数值字段（如霰弹枪 "14x8"）取其首个数字参与比较
+            const num = v => {
+                if (v === null || v === undefined) return -1;
+                const m = String(v).match(/\d+(\.\d+)?/);
+                return m ? Number(m[0]) : -1;
+            };
+            list.sort((a, b) => {
+                if (activeSort === 'weapon_id') return a.weapon_id - b.weapon_id;
+                const x = num(a[activeSort]), y = num(b[activeSort]);
+                return y - x;   // 降序：强的排前面
+            });
+
+            document.getElementById('statShown').textContent = list.length;
+
+            if (list.length === 0) {
+                grid.innerHTML = '<p class="loading">没有匹配的武器，换个条件试试</p>';
+                return;
+            }
+
+            grid.innerHTML = list.map(w => `
+                <div class="weapon-card" data-id="${w.weapon_id}">
+                    <div class="wc-head">
+                        <span class="wc-name">${w.name}</span>
+                        <span class="wc-cat">${w.category || '—'}</span>
+                    </div>
+                    <div class="wc-price">价格 <b>${money(w.price)}</b></div>
+                    <div class="wc-stats">
+                        <div class="wc-row"><span>伤害</span><b>${dash(w.base_damage)}</b>${bar(num(w.base_damage))}</div>
+                        <div class="wc-row"><span>射速</span><b>${dash(w.fire_rate)}</b>${bar(num(w.fire_rate) > 100 ? num(w.fire_rate) / 12 : null)}</div>
+                        <div class="wc-row"><span>射程</span><b>${dash(w.optimal_range)}</b>${bar(w.optimal_range)}</div>
+                        <div class="wc-row"><span>操控</span><b>${dash(w.handling)}</b>${bar(w.handling)}</div>
+                    </div>
+                    <div class="wc-foot">
+                        <span class="wc-mode">${dash(w.firing_mode)}</span>
+                        <span class="wc-more">查看详情 →</span>
+                    </div>
+                </div>
+            `).join('');
+
+            grid.querySelectorAll('.weapon-card').forEach(card => {
+                card.addEventListener('click', () => showDetail(Number(card.dataset.id)));
+            });
+        }
+
+        function showDetail(id) {
+            const w = allWeapons.find(x => x.weapon_id === id);
+            if (!w) return;
+            const rows = [
+                ['武器名称', w.name], ['分类', w.category], ['英文标识', w.slug],
+                ['游戏内价格', money(w.price)], ['基础伤害', w.base_damage], ['护甲伤害', w.armor_damage],
+                ['射速', w.fire_rate], ['射击模式', w.firing_mode], ['弹匣容量', w.magazine_capacity],
+                ['最佳射程', w.optimal_range], ['后坐力控制', w.recoil_control], ['操控性', w.handling],
+                ['稳定性', w.stability], ['腰射精度', w.hip_fire_accuracy],
+                ['子弹初速 (m/s)', w.bullet_velocity], ['枪声传播 (m)', w.gunshot_sound_range],
+                ['换弹时间 (秒)', w.reload_time]
+            ];
+            document.getElementById('modalBox').innerHTML = `
+                <div class="modal-head">
+                    <h2>${w.name}</h2>
+                    <button class="modal-close" id="modalClose">×</button>
+                </div>
+                <table class="detail-table">
+                    ${rows.map(r => `<tr><td class="dt-key">${r[0]}</td><td class="dt-val">${dash(r[1])}</td></tr>`).join('')}
+                </table>
+                <p class="detail-note">数据来源于游戏内武器面板，"—" 表示该字段尚未录入。</p>
+            `;
+            document.getElementById('modalMask').classList.add('show');
+            document.getElementById('modalClose').addEventListener('click', closeModal);
+        }
+
+        function closeModal() {
+            document.getElementById('modalMask').classList.remove('show');
+        }
+
+        // 初始化
+        (async function init() {
+            const grid = document.getElementById('weaponGrid');
+            try {
+                await Promise.all([loadCategories(), loadStats(), loadWeapons()]);
+                render();
+            } catch (e) {
+                grid.innerHTML = '<p class="loading error">数据加载失败：' + e.message +
+                    '<br><br>请确认后端已启动（npm run dev），且已执行 npm run seed 灌入武器数据。</p>';
+            }
+
+            // 搜索：输入即筛选
+            let timer;
+            document.getElementById('searchBox').addEventListener('input', e => {
+                clearTimeout(timer);
+                timer = setTimeout(() => {
+                    activeKeyword = e.target.value.trim().toLowerCase();
+                    render();
+                }, 200);
+            });
+
+            document.getElementById('sortSelect').addEventListener('change', e => {
+                activeSort = e.target.value;
+                render();
+            });
+
+            // 点遮罩空白处关闭弹窗
+            document.getElementById('modalMask').addEventListener('click', e => {
+                if (e.target.id === 'modalMask') closeModal();
+            });
+            // ESC 关闭弹窗
+            document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+        })();
+    </script>
+</body>
+</html>

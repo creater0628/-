@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>天际港 · AI 指挥官助手</title>
+    <link rel="stylesheet" href="../static/css/style.css">
+    <link rel="stylesheet" href="../static/css/ai.css">
+</head>
+<body>
+    <div class="container chat-container">
+        <h1>天际港 · AI 指挥官助手</h1>
+        <div class="nav-links">
+            <a href="index.html" class="btn-link">&lt;- 返回 AI 资源生成器</a>
+            <a href="delta.html" class="btn-link">武器数据库 -&gt;</a>
+        </div>
+
+        <!-- 对话区 -->
+        <div class="chat-box" id="chatBox"></div>
+
+        <!-- 快捷提问 -->
+        <div class="quick-row" id="quickRow"></div>
+
+        <!-- 输入区 -->
+        <div class="input-row">
+            <textarea id="msgInput" rows="2" placeholder="向指挥官提问…（Enter 发送，Shift+Enter 换行）"></textarea>
+            <button id="sendBtn">发送</button>
+        </div>
+
+        <p class="foot-tip">
+            由通义千问驱动 · 当前模型 <span id="modelName">检测中…</span>
+            <span id="quotaWarn" class="quota-warn" hidden></span>
+        </p>
+    </div>
+
+    <script>
+        const API_CHAT = '/api/ai/chat';
+
+        const chatBox = document.getElementById('chatBox');
+        const input = document.getElementById('msgInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const quickRow = document.getElementById('quickRow');
+
+        let busy = false;
+
+        // 快捷提问：贴合"天际港指挥官"人设与三角洲行动场景
+        const QUICK_ASKS = [
+            '天际港现在的局势如何？',
+            '推荐一套适合新手的近战配装',
+            'AWM 和 M82 该怎么选？',
+            '室内清房有什么战术要点？',
+            '给我一份新手入门指南'
+        ];
+
+        // 所有消息文本一律用 textContent 写入，避免 AI 返回内容被当作 HTML 执行
+        function addMsg(role, text, extra) {
+            const wrap = document.createElement('div');
+            wrap.className = 'msg msg-' + role;
+
+            const who = document.createElement('div');
+            who.className = 'msg-who';
+            who.textContent = role === 'user' ? '你' : '指挥官';
+            wrap.appendChild(who);
+
+            const bubble = document.createElement('div');
+            bubble.className = 'bubble';
+            bubble.textContent = text;
+            wrap.appendChild(bubble);
+
+            if (extra) {
+                const meta = document.createElement('div');
+                meta.className = 'msg-meta';
+                meta.textContent = extra;
+                wrap.appendChild(meta);
+            }
+            chatBox.appendChild(wrap);
+            chatBox.scrollTop = chatBox.scrollHeight;
+            return bubble;
+        }
+
+        // "正在思考"动画气泡
+        function addTyping() {
+            const wrap = document.createElement('div');
+            wrap.className = 'msg msg-bot';
+            const who = document.createElement('div');
+            who.className = 'msg-who';
+            who.textContent = '指挥官';
+            const bubble = document.createElement('div');
+            bubble.className = 'bubble bubble-typing';
+            bubble.innerHTML = '<span class="dot"></span><span class="dot"></span><span class="dot"></span>';
+            wrap.appendChild(who);
+            wrap.appendChild(bubble);
+            chatBox.appendChild(wrap);
+            chatBox.scrollTop = chatBox.scrollHeight;
+            return wrap;
+        }
+
+        function setBusy(on) {
+            busy = on;
+            sendBtn.disabled = on;
+            sendBtn.textContent = on ? '思考中…' : '发送';
+            input.disabled = on;
+            if (!on) input.focus();
+        }
+
+        async function send(text) {
+            const message = (text || input.value || '').trim();
+            if (!message || busy) return;
+
+            input.value = '';
+            addMsg('user', message);
+            setBusy(true);
+            const typing = addTyping();
+
+            try {
+                const res = await fetch(API_CHAT, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message })
+                });
+                const data = await res.json().catch(() => ({}));
+                typing.remove();
+
+                if (res.ok && data.reply) {
+                    if (data.model) document.getElementById('modelName').textContent = data.model;
+                    const extra = data.retried ? '（本次自动重试 ' + data.retried + ' 次）' : '';
+                    addMsg('bot', data.reply, extra || null);
+                } else {
+                    // 后端已把阿里云的原始错误翻译成人话，直接展示
+                    const err = data.error || ('请求失败 HTTP ' + res.status);
+                    addMsg('bot', '⚠️ ' + err + (data.hint ? '\n\n处理建议：' + data.hint : ''));
+                    if (res.status === 429 || res.status === 503) {
+                        const w = document.getElementById('quotaWarn');
+                        w.hidden = false;
+                        w.textContent = '（已达限流，稍等片刻再试）';
+                        setTimeout(() => { w.hidden = true; }, 15000);
+                    }
+                }
+            } catch (e) {
+                typing.remove();
+                addMsg('bot', '⚠️ 无法连接后端服务：' + e.message +
+                    '\n\n请确认已执行 npm run dev 启动服务，并通过 http://localhost:3000 访问本页（直接双击打开文件会导致接口失效）。');
+            } finally {
+                setBusy(false);
+            }
+        }
+
+        // 事件绑定
+        sendBtn.addEventListener('click', () => send());
+        input.addEventListener('keydown', e => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                send();
+            }
+        });
+        QUICK_ASKS.forEach(q => {
+            const b = document.createElement('button');
+            b.className = 'quick-chip';
+            b.textContent = q;
+            b.addEventListener('click', () => send(q));
+            quickRow.appendChild(b);
+        });
+
+        // 欢迎语
+        addMsg('bot', '我是天际港三角洲行动最高指挥官，天际港全权由我负责。\n' +
+            '配装建议、战术要点、武器对比，尽管问。');
+        setBusy(false);
+    </script>
+</body>
+</html>

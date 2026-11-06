@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI游戏资源生成器</title>
+    <link rel="stylesheet" href="../static/css/style.css">
+</head>
+<body>
+    <div class="container">
+        <h1>AI游戏资源生成器</h1>
+        <a href="play.html" class="btn-link">前往游戏试玩页面 -></a>
+        <a href="delta.html" class="btn-link">三角洲武器数据库 -></a>
+        <a href="ai.html" class="btn-link">AI 指挥官助手 -></a>
+        <div class="form-box">
+            <label for="type">资源类型</label>
+            <select id="type">
+                <option value="角色">游戏角色</option>
+                <option value="场景">游戏场景</option>
+                <option value="道具">游戏道具</option>
+            </select>
+            <label for="content">资源描述词</label>
+            <textarea id="content" rows="5" placeholder="在这里输入你想要生成的游戏资源描述..."></textarea>
+            <button id="submitBtn">生成资源</button>
+        </div>
+        <div class="result-card" id="resultCard">
+            <h2>生成结果</h2>
+            <p id="resultText">点击【生成资源】后，预览信息将显示在这里</p>
+        </div>
+    </div>
+</body>
+</html>

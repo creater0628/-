@@ -3,14 +3,19 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "start": "node ./bin/www"
+    "start": "node --env-file-if-exists=.env ./bin/www",
+    "dev": "node --env-file-if-exists=.env app.js",
+    "seed": "node --env-file-if-exists=.env ./scripts/seed_weapons.js"
   },
   "dependencies": {
+    "better-sqlite3": "^13.0.3",
     "cookie-parser": "~1.4.4",
     "debug": "~2.6.9",
     "express": "^4.22.3",
+    "knex": "^3.3.0",
     "mongodb": "^7.8.0",
     "morgan": "^1.12.1",
-    "mysql": "^2.18.1"
+    "mysql": "^2.18.1",
+    "mysql2": "^3.24.6"
   }
 }
